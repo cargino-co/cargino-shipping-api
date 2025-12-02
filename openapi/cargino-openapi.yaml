@@ -1,0 +1,246 @@
+openapi: 3.0.3
+info:
+  title: Cargino Shipping API
+  version: 1.1.0
+  description: |
+    Public API for calculating shipping offers for parcels to Iran.
+    This endpoint is designed to be AI-friendly and easy to integrate
+    into chatbots, assistants, and shipping platforms.
+
+servers:
+  - url: https://cargino.com
+    description: Production server
+  - url: http://localhost
+    description: Local development server (for internal testing only)
+
+paths:
+  /api/shipping-rate.php:
+    get:
+      summary: Calculate shipping offers
+      description: |
+        Returns one or more shipping offers for a parcel being sent from a given
+        origin country to a destination country (typically Iran).
+      parameters:
+        - in: query
+          name: from_country
+          required: true
+          description: Origin country (ISO 3166-1 alpha-2 code), e.g. CN, TR, AE.
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 2
+            example: CN
+
+        - in: query
+          name: to_country
+          required: true
+          description: Destination country (ISO 3166-1 alpha-2 code), typically IR for Iran.
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 2
+            example: IR
+
+        - in: query
+          name: weight_kg
+          required: true
+          description: Actual parcel weight in kilograms. Must be greater than 0.
+          schema:
+            type: number
+            format: float
+            minimum: 0.01
+            example: 2.3
+
+        - in: query
+          name: length_cm
+          required: false
+          description: Parcel length in centimeters.
+          schema:
+            type: number
+            format: float
+            minimum: 0
+            example: 30
+
+        - in: query
+          name: width_cm
+          required: false
+          description: Parcel width in centimeters.
+          schema:
+            type: number
+            format: float
+            minimum: 0
+            example: 20
+
+        - in: query
+          name: height_cm
+          required: false
+          description: Parcel height in centimeters.
+          schema:
+            type: number
+            format: float
+            minimum: 0
+            example: 15
+
+        - in: query
+          name: currency
+          required: false
+          description: Desired currency for price display (ISO 4217 code), e.g. EUR or USD.
+          schema:
+            type: string
+            minLength: 3
+            maxLength: 3
+            example: EUR
+
+      responses:
+        '200':
+          description: Shipping offers calculated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingRateResponse'
+              examples:
+                example:
+                  summary: Sample shipping offers
+                  value:
+                    provider: Cargino
+                    from_country: CN
+                    to_country: IR
+                    weight_kg: 2.3
+                    currency: EUR
+                    offers:
+                      - service_code: CARGINO_STD_CN_IR
+                        service_name: Cargino Standard from China to Iran
+                        delivery_type: standard
+                        total_price: 39.90
+                        estimated_delivery_days_min: 9
+                        estimated_delivery_days_max: 14
+                      - service_code: CARGINO_EXP_CN_IR
+                        service_name: Cargino Express from China to Iran
+                        delivery_type: express
+                        total_price: 49.90
+                        estimated_delivery_days_min: 5
+                        estimated_delivery_days_max: 9
+                    meta:
+                      version: "1.1"
+                      generated_at: "2025-12-02T10:15:00Z"
+
+        '400':
+          description: Invalid request parameters.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: INVALID_REQUEST
+                  message: weight_kg must be greater than 0
+                  details:
+                    field: weight_kg
+
+        '429':
+          description: Too many requests (rate limit exceeded).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: RATE_LIMIT_EXCEEDED
+                  message: Too many requests. Please try again later.
+
+        '500':
+          description: Internal server error while calculating shipping rate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: INTERNAL_ERROR
+                  message: Unexpected error while calculating shipping rate.
+
+components:
+  schemas:
+    ShippingRateResponse:
+      type: object
+      properties:
+        provider:
+          type: string
+          example: Cargino
+        from_country:
+          type: string
+          example: CN
+        to_country:
+          type: string
+          example: IR
+        weight_kg:
+          type: number
+          example: 2.3
+        currency:
+          type: string
+          example: EUR
+        offers:
+          type: array
+          description: List of available shipping offers for this route and weight.
+          items:
+            $ref: '#/components/schemas/ShippingOffer'
+        meta:
+          type: object
+          properties:
+            version:
+              type: string
+              example: "1.1"
+            generated_at:
+              type: string
+              format: date-time
+              example: "2025-12-02T10:15:00Z"
+
+    ShippingOffer:
+      type: object
+      properties:
+        service_code:
+          type: string
+          description: Internal or public code for the shipping service.
+          example: CARGINO_STD_CN_IR
+        service_name:
+          type: string
+          description: Human-readable name of the shipping service.
+          example: Cargino Standard from China to Iran
+        delivery_type:
+          type: string
+          description: Delivery speed/type.
+          example: standard
+        total_price:
+          type: number
+          description: Final price in the selected currency.
+          example: 39.90
+        estimated_delivery_days_min:
+          type: integer
+          example: 9
+        estimated_delivery_days_max:
+          type: integer
+          example: 14
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          $ref: '#/components/schemas/Error'
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code.
+          example: INVALID_REQUEST
+        message:
+          type: string
+          description: Human-readable error message.
+          example: weight_kg must be greater than 0
+        details:
+          type: object
+          description: Optional field-level details.
+          additionalProperties: true
+          example:
+            field: weight_kg
