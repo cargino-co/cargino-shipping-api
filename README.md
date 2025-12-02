@@ -159,6 +159,16 @@ You can import this definition into:
 
 ---
 
+## Postman collection
+
+You can also explore and test the API using the public Postman collection:
+
+- Postman: https://www.postman.com/karimimahan-3064307/cargino-shipping-api/collection/n6vnac7/cargino-shipping-api?action=share&creator=50511952
+
+Fork this collection into your own workspace to experiment with the endpoint and integrate it into your applications.
+
+---
+
 ## Error handling
 
 On invalid input, the API returns an error object:
